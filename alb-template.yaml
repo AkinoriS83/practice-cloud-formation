@@ -1,0 +1,79 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: Public ALB with HTTPS and Route53 Alias Record
+
+Parameters:
+  VpcId:
+    Type: AWS::EC2::VPC::Id
+    Description: "VPC ID where ALB will be deployed"
+  Subnet1:
+    Type: AWS::EC2::Subnet::Id
+    Description: "Public Subnet 1"
+  Subnet2:
+    Type: AWS::EC2::Subnet::Id
+    Description: "Public Subnet 2"
+  ALBSecurityGroupId:
+    Type: AWS::EC2::SecurityGroup::Id
+    Description: "Existing Security Group ID for ALB"
+  CertificateArn:
+    Type: String
+    Description: "ACM Certificate ARN for HTTPS"
+  HostedZoneId:
+    Type: String
+    Description: "Route53 Hosted Zone ID (e.g., Z2ABCDEFGHIJKL)"
+  DomainName:
+    Type: String
+    Description: "Domain name to assign to ALB (e.g., www.example.com)"
+  ExistingTargetGroupArn:
+    Type: String
+    Description: "ARN of the existing Target Group to associate with ALB"
+  AlbName:
+    Type: String
+    Description: "ALB Name"
+
+Resources:
+  ALB:
+    Type: AWS::ElasticLoadBalancingV2::LoadBalancer
+    Properties:
+      Name: !Ref AlbName
+      Scheme: internet-facing
+      Type: application
+      Subnets:
+        - !Ref Subnet1
+        - !Ref Subnet2
+      SecurityGroups:
+        - !Ref ALBSecurityGroupId
+
+  ALBListenerHTTPS:
+    Type: AWS::ElasticLoadBalancingV2::Listener
+    Properties:
+      LoadBalancerArn: !Ref ALB
+      Port: 443
+      Protocol: HTTPS
+      Certificates:
+        - CertificateArn: !Ref CertificateArn
+      DefaultActions:
+        - Type: forward
+          TargetGroupArn: !Ref ExistingTargetGroupArn
+
+  ALBListenerHTTP:
+    Type: AWS::ElasticLoadBalancingV2::Listener
+    Properties:
+      LoadBalancerArn: !Ref ALB
+      Port: 80
+      Protocol: HTTP
+      DefaultActions:
+        - Type: redirect
+          RedirectConfig:
+            Protocol: HTTPS
+            Port: "443"
+            StatusCode: HTTP_301
+
+  Route53Record:
+    Type: AWS::Route53::RecordSet
+    Properties:
+      HostedZoneId: !Ref HostedZoneId
+      Name: !Ref DomainName
+      Type: A
+      AliasTarget:
+        DNSName: !GetAtt ALB.DNSName
+        HostedZoneId: !GetAtt ALB.CanonicalHostedZoneID
