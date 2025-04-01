@@ -11,9 +11,6 @@ Parameters:
   Subnet2:
     Type: AWS::EC2::Subnet::Id
     Description: "Public Subnet 2"
-  ALBSecurityGroupId:
-    Type: AWS::EC2::SecurityGroup::Id
-    Description: "Existing Security Group ID for ALB"
   CertificateArn:
     Type: String
     Description: "ACM Certificate ARN for HTTPS"
@@ -23,25 +20,47 @@ Parameters:
   DomainName:
     Type: String
     Description: "Domain name to assign to ALB (e.g., www.example.com)"
-  ExistingTargetGroupArn:
-    Type: String
-    Description: "ARN of the existing Target Group to associate with ALB"
-  AlbName:
-    Type: String
-    Description: "ALB Name"
 
 Resources:
+  ALBSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Security group for ALB
+      VpcId: !Ref VpcId
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          CidrIp: 0.0.0.0/0
+        - IpProtocol: tcp
+          FromPort: 443
+          ToPort: 443
+          CidrIp: 0.0.0.0/0
+
   ALB:
     Type: AWS::ElasticLoadBalancingV2::LoadBalancer
     Properties:
-      Name: !Ref AlbName
+      Name: myapp-alb
       Scheme: internet-facing
       Type: application
       Subnets:
         - !Ref Subnet1
         - !Ref Subnet2
       SecurityGroups:
-        - !Ref ALBSecurityGroupId
+        - !Ref ALBSecurityGroup
+
+  TargetGroup:
+    Type: AWS::ElasticLoadBalancingV2::TargetGroup
+    Properties:
+      VpcId: !Ref VpcId
+      Protocol: HTTP
+      Port: 80
+      TargetType: instance
+      HealthCheckProtocol: HTTP
+      HealthCheckPort: traffic-port
+      HealthCheckPath: /
+      Matcher:
+        HttpCode: 200
 
   ALBListenerHTTPS:
     Type: AWS::ElasticLoadBalancingV2::Listener
@@ -53,7 +72,7 @@ Resources:
         - CertificateArn: !Ref CertificateArn
       DefaultActions:
         - Type: forward
-          TargetGroupArn: !Ref ExistingTargetGroupArn
+          TargetGroupArn: !Ref TargetGroup
 
   ALBListenerHTTP:
     Type: AWS::ElasticLoadBalancingV2::Listener
@@ -77,3 +96,9 @@ Resources:
       AliasTarget:
         DNSName: !GetAtt ALB.DNSName
         HostedZoneId: !GetAtt ALB.CanonicalHostedZoneID
+
+Outputs:
+  AlbSecurityGroupId:
+    Value: !Ref ALBSecurityGroup
+    Export:
+      Name: AlbSecurityGroupId

@@ -6,7 +6,7 @@ This repository contains AWS CloudFormation templates for personal learning and 
 
 - `alb-template.yml`  
   Template to create a public-facing Application Load Balancer (ALB) with HTTPS support and Route53 integration.  
-  Uses existing VPC, subnets, security group, and target group. Accepts a custom ALB name via parameter.
+  Uses existing VPC, subnets, hosted zone.
 
 ## 🚀 Usage
 
@@ -19,19 +19,16 @@ Create a `params.json` file with your environment-specific values:
   { "ParameterKey": "VpcId", "ParameterValue": "vpc-xxxxxxxx" },
   { "ParameterKey": "Subnet1", "ParameterValue": "subnet-aaaaaaa" },
   { "ParameterKey": "Subnet2", "ParameterValue": "subnet-bbbbbbb" },
-  { "ParameterKey": "ALBSecurityGroupId", "ParameterValue": "sg-12345678" },
   { "ParameterKey": "CertificateArn", "ParameterValue": "arn:aws:acm:..." },
   { "ParameterKey": "HostedZoneId", "ParameterValue": "Z2ABCDEFGHIJKL" },
-  { "ParameterKey": "DomainName", "ParameterValue": "app.example.com" },
-  { "ParameterKey": "ExistingTargetGroupArn", "ParameterValue": "arn:aws:elasticloadbalancing:..." },
-  { "ParameterKey": "AlbName", "ParameterValue": "xxxxx-ab" }
+  { "ParameterKey": "DomainName", "ParameterValue": "app.example.com" }
 ]
 ```
 
 ### 2. Deploy the Template
 
 ```bash
-aws cloudformation deploy   --template-file alb-template.yml   --stack-name my-alb-stack   --parameter-overrides file://params.json
+aws cloudformation deploy   --template-file alb.yaml   --stack-name my-alb-stack   --parameter-overrides file://params.json
 ```
 
 ## 🛠 Prerequisites

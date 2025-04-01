@@ -1,0 +1,84 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: Private Subnet with NAT Gateway, Elastic IP, and Route Table
+
+Parameters:
+  VpcId:
+    Type: AWS::EC2::VPC::Id
+    Description: ID of the VPC to launch the resources in
+  PublicSubnetId:
+    Type: AWS::EC2::Subnet::Id
+    Description: Public subnet where the NAT Gateway will be placed
+  PrivateSubnetCidr:
+    Type: String
+    Default: 10.0.2.0/24
+    Description: CIDR block for the private subnet
+  AvailabilityZone:
+    Type: String
+    Default: ""
+    Description: Optional specify AZ manually (e.g., ap-northeast-1a)
+
+Conditions:
+  HasAZParam: !Not [!Equals [!Ref AvailabilityZone, ""]]
+
+Resources:
+
+  # Private Subnet definition
+  PrivateSubnet:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref VpcId
+      CidrBlock: !Ref PrivateSubnetCidr
+      AvailabilityZone: !If
+        - HasAZParam
+        - !Ref AvailabilityZone
+        - !Select [0, !GetAZs ""]  # default to first AZ 
+      MapPublicIpOnLaunch: false  # This is a private subnet, no public IP assigned
+      Tags:
+        - Key: Name
+          Value: PrivateSubnet
+
+  # Elastic IP for the NAT Gateway
+  NatEIP:
+    Type: AWS::EC2::EIP
+    Properties:
+      Domain: vpc  # Must be 'vpc' for use with NAT Gateway
+
+  # NAT Gateway for outbound internet access from private subnet
+  NatGateway:
+    Type: AWS::EC2::NatGateway
+    Properties:
+      AllocationId: !GetAtt NatEIP.AllocationId
+      SubnetId: !Ref PublicSubnetId  # NAT Gateway must be in a public subnet
+      Tags:
+        - Key: Name
+          Value: NAT-Gateway
+
+  # Route table for the private subnet
+  PrivateRouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref VpcId
+      Tags:
+        - Key: Name
+          Value: Private-RouteTable
+
+  # Associate the private subnet with the route table
+  PrivateRouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref PrivateSubnet
+      RouteTableId: !Ref PrivateRouteTable
+
+  # Add a route to the internet via the NAT Gateway
+  PrivateDefaultRoute:
+    Type: AWS::EC2::Route
+    Properties:
+      RouteTableId: !Ref PrivateRouteTable
+      DestinationCidrBlock: 0.0.0.0/0
+      NatGatewayId: !Ref NatGateway
+
+Outputs:
+  PrivateSubnetId:
+    Value: !Ref PrivateSubnet
+    Export:
+      Name: PrivateSubnetId

@@ -1,0 +1,47 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: EC2 instance in private subnet with ALB-accessible security group and target group attachment
+
+Parameters:
+  VpcId:
+    Type: AWS::EC2::VPC::Id
+    Description: VPC ID where the EC2 will be launched
+  AmiId:
+    Type: AWS::EC2::Image::Id
+    Description: AMI ID for EC2 (custom or from AWS catalog)
+  InstanceType:
+    Type: String
+    Default: t3.micro
+    Description: EC2 instance type
+
+Resources:
+
+  # EC2 Security Group allowing HTTP access from ALB's SG
+  EC2SecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Security group for EC2 allowing ALB access
+      VpcId: !Ref VpcId
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          SourceSecurityGroupId: !ImportValue AlbSecurityGroupId
+      Tags:
+        - Key: Name
+          Value: EC2-SG
+
+  # EC2 instance
+  WebServerInstance:
+    Type: AWS::EC2::Instance
+    Properties:
+      ImageId: !Ref AmiId
+      InstanceType: !Ref InstanceType
+      NetworkInterfaces:
+        - DeviceIndex: 0
+          SubnetId: !ImportValue PrivateSubnetId
+          AssociatePublicIpAddress: false
+          GroupSet:
+            - !Ref EC2SecurityGroup
+      Tags:
+        - Key: Name
+          Value: WebServer
