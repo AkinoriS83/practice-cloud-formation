@@ -102,3 +102,7 @@ Outputs:
     Value: !Ref ALBSecurityGroup
     Export:
       Name: AlbSecurityGroupId
+  TargetGroupArn:
+    Value: !Ref TargetGroup
+    Export:
+      Name: AlbTargetGroupArn
