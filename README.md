@@ -1,48 +1,71 @@
-# AWS CloudFormation Templates for Practice
+# ☁️ AWS CloudFormation Practice Environment
 
-This repository contains AWS CloudFormation templates for personal learning and experimentation.
+This repository contains modular AWS CloudFormation templates to build a basic infrastructure setup consisting of:
 
-## 📦 Contents
+- 🔐 VPC + Private Subnet + NAT Gateway
+- 🌐 Application Load Balancer (ALB)
+- 🖥️ EC2 or Auto Scaling Group
+- 🛠️ Makefile-based deployment automation
 
-- `alb-template.yml`  
-  Template to create a public-facing Application Load Balancer (ALB) with HTTPS support and Route53 integration.  
-  Uses existing VPC, subnets, hosted zone.
+---
 
-## 🚀 Usage
+## 📂 Files Overview
 
-### 1. Prepare Parameters
+| File | Purpose |
+|------|---------|
+| `private_subnet.yaml` | Defines VPC, private subnet, NAT Gateway, and route table |
+| `alb.yaml` | Creates ALB and associated security group |
+| `ec2.yaml` | Launches EC2 instance and registers it to a target group |
+| `atuo_scaling.yaml` | (Optional) Defines Auto Scaling Group |
+| `Makefile` | Automates deploy/delete operations for all stacks |
 
-Create a `params.json` file with your environment-specific values:
+---
 
-```json
-[
-  { "ParameterKey": "VpcId", "ParameterValue": "vpc-xxxxxxxx" },
-  { "ParameterKey": "Subnet1", "ParameterValue": "subnet-aaaaaaa" },
-  { "ParameterKey": "Subnet2", "ParameterValue": "subnet-bbbbbbb" },
-  { "ParameterKey": "CertificateArn", "ParameterValue": "arn:aws:acm:..." },
-  { "ParameterKey": "HostedZoneId", "ParameterValue": "Z2ABCDEFGHIJKL" },
-  { "ParameterKey": "DomainName", "ParameterValue": "app.example.com" }
-]
-```
+## 🚀 Deployment (Using Make)
 
-### 2. Deploy the Template
+Make sure your AWS CLI is configured and run:
 
 ```bash
-aws cloudformation deploy   --template-file alb.yaml   --stack-name my-alb-stack   --parameter-overrides file://params.json
+# Deploy all stacks in order: network → alb → ec2
+make all
+
+# Delete all stacks safely, in reverse order (includes wait for deletion)
+make clean
 ```
 
-## 🛠 Prerequisites
+---
 
-- AWS CLI configured with proper credentials
-- Required resources (VPC, subnets, SG, target group, ACM cert, Route53 hosted zone) already exist
+## 🔧 Parameter Configuration
 
-## 🎯 Purpose
+Each template uses parameters like `VpcId`, `PrivateSubnetId`, `AlbSecurityGroupId`, `AmiId`, etc.
 
-This repository is for educational and personal practice use only.  
-It is **not intended for production use**.
+These are resolved via CloudFormation `Export`/`ImportValue`, so make sure the dependencies are created first (via Makefile or manually).
+
+To deploy `ec2.yaml` standalone, pass parameters like this:
+
+```bash
+aws cloudformation deploy \
+  --template-file ec2.yaml \
+  --stack-name my-ec2-stack \
+  --parameter-overrides AmiId=ami-xxxxxxxxxxxxxxxxx
+```
+
+---
+
+## 🧠 Tips
+
+- Availability Zone (AZ) for private subnet can be optionally specified. If omitted, the first AZ will be selected automatically.
+- `delete-stack` is non-blocking, so `wait stack-delete-complete` is used in Makefile to avoid dependency errors.
+- `Makefile` defines proper stack dependencies to ensure correct deploy/delete order.
+
+---
 
 ## 📚 References
 
-- [AWS CloudFormation Docs](https://docs.aws.amazon.com/cloudformation/)
+- [AWS CloudFormation](https://docs.aws.amazon.com/cloudformation/)
 - [ALB User Guide](https://docs.aws.amazon.com/elasticloadbalancing/latest/application/introduction.html)
-- [Route53 Alias Records](https://docs.aws.amazon.com/Route53/latest/DeveloperGuide/routing-to-elb-load-balancer.html)
+- [Auto Scaling Group Docs](https://docs.aws.amazon.com/autoscaling/ec2/userguide/AutoScalingGroup.html)
+
+---
+
+> This repository is intended for **learning and practice only**, not for production.
