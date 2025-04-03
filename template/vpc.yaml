@@ -1,0 +1,184 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: VPC with 3 Public Subnets (Primary, Secondary, Optional Tertiary)
+
+Parameters:
+  VpcCidr:
+    Type: String
+    Description: CIDR block for the VPC
+
+  PrimarySubnetAZ:
+    Type: String
+    Default: ''
+    Description: AZ for Primary Subnet. Leave blank to auto-select.
+
+  SecondarySubnetAZ:
+    Type: String
+    Default: ''
+    Description: AZ for Secondary Subnet. Leave blank to auto-select.
+
+  TertiarySubnetAZ:
+    Type: String
+    Default: ''
+    Description: AZ for Tertiary Subnet. Leave blank to auto-select.
+
+  CreateTertiarySubnet:
+    Type: String
+    AllowedValues: [true, false]
+    Default: false
+    Description: Whether to create a Tertiary Subnet.
+
+  PrimarySubnetCidr:
+    Type: String
+    Description: CIDR block for the Primary Subnet
+
+  SecondarySubnetCidr:
+    Type: String
+    Description: CIDR block for the Secondary Subnet
+
+  TertiarySubnetCidr:
+    Type: String
+    Description: CIDR block for the Tertiary Subnet
+
+Conditions:
+  CreateTertiary: !Equals [ !Ref CreateTertiarySubnet, "true" ]
+  UseDefaultPrimaryAZ: !Equals [!Ref PrimarySubnetAZ, ""]
+  UseDefaultSecondaryAZ: !Equals [!Ref SecondarySubnetAZ, ""]
+  UseDefaultTertiaryAZ: !Equals [!Ref TertiarySubnetAZ, ""]
+
+Resources:
+  VPC:
+    Type: AWS::EC2::VPC
+    Properties:
+      CidrBlock: !Ref VpcCidr
+      EnableDnsSupport: true
+      EnableDnsHostnames: true
+      Tags:
+        - Key: Name
+          Value: MyVPC
+
+  InternetGateway:
+    Type: AWS::EC2::InternetGateway
+    Properties:
+      Tags:
+        - Key: Name
+          Value: MyInternetGateway
+
+  AttachGateway:
+    Type: AWS::EC2::VPCGatewayAttachment
+    Properties:
+      VpcId: !Ref VPC
+      InternetGatewayId: !Ref InternetGateway
+
+  PublicRouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref VPC
+      Tags:
+        - Key: Name
+          Value: PublicRouteTable
+
+  DefaultRoute:
+    Type: AWS::EC2::Route
+    DependsOn: AttachGateway
+    Properties:
+      RouteTableId: !Ref PublicRouteTable
+      DestinationCidrBlock: 0.0.0.0/0
+      GatewayId: !Ref InternetGateway
+
+  PrimarySubnet:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref VPC
+      AvailabilityZone: !If [UseDefaultPrimaryAZ, !Select [0, !GetAZs ''], !Ref PrimarySubnetAZ]
+      CidrBlock: !Ref PrimarySubnetCidr
+      MapPublicIpOnLaunch: true
+      Tags:
+        - Key: Name
+          Value: Public-Primary
+
+  PrimaryRouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref PrimarySubnet
+      RouteTableId: !Ref PublicRouteTable
+
+  SecondarySubnet:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref VPC
+      AvailabilityZone: !If [UseDefaultSecondaryAZ, !Select [1, !GetAZs ''], !Ref SecondarySubnetAZ]
+      CidrBlock: !Ref SecondarySubnetCidr
+      MapPublicIpOnLaunch: true
+      Tags:
+        - Key: Name
+          Value: Public-Secondary
+
+  SecondaryRouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref SecondarySubnet
+      RouteTableId: !Ref PublicRouteTable
+
+  TertiarySubnet:
+    Type: AWS::EC2::Subnet
+    Condition: CreateTertiary
+    Properties:
+      VpcId: !Ref VPC
+      AvailabilityZone: !If [UseDefaultTertiaryAZ, !Select [2, !GetAZs ''], !Ref TertiarySubnetAZ]
+      CidrBlock: !Ref TertiarySubnetCidr
+      MapPublicIpOnLaunch: true
+      Tags:
+        - Key: Name
+          Value: Public-Tertiary
+
+  TertiaryRouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Condition: CreateTertiary
+    Properties:
+      SubnetId: !Ref TertiarySubnet
+      RouteTableId: !Ref PublicRouteTable
+
+Outputs:
+  VPCId:
+    Description: ID of the created VPC
+    Value: !Ref VPC
+    Export:
+      Name: VPCId
+
+  PrimaryAZ:
+    Description: Availability Zone for Primary Subnet
+    Value: !If [UseDefaultPrimaryAZ, !Select [0, !GetAZs ''], !Ref PrimarySubnetAZ]
+    Export:
+      Name: PrimaryAZ
+
+  SecondaryAZ:
+    Description: Availability Zone for Secondary Subnet
+    Value: !If [UseDefaultSecondaryAZ, !Select [1, !GetAZs ''], !Ref SecondarySubnetAZ]
+    Export:
+      Name: SecondaryAZ
+
+  TertiaryAZ:
+    Condition: CreateTertiary
+    Description: Availability Zone for Tertiary Subnet
+    Value: !If [UseDefaultTertiaryAZ, !Select [2, !GetAZs ''], !Ref TertiarySubnetAZ]
+    Export:
+      Name: TertiaryAZ
+
+  PrimarySubnetId:
+    Description: ID of the Primary Subnet
+    Value: !Ref PrimarySubnet
+    Export:
+      Name: PrimarySubnetId
+
+  SecondarySubnetId:
+    Description: ID of the Secondary Subnet
+    Value: !Ref SecondarySubnet
+    Export:
+      Name: SecondarySubnetId
+
+  TertiarySubnetId:
+    Condition: CreateTertiary
+    Description: ID of the Tertiary Subnet
+    Value: !Ref TertiarySubnet
+    Export:
+      Name: TertiarySubnetId

@@ -2,9 +2,6 @@ AWSTemplateFormatVersion: '2010-09-09'
 Description: EC2 instance in private subnet with ALB-accessible security group and target group attachment
 
 Parameters:
-  VpcId:
-    Type: AWS::EC2::VPC::Id
-    Description: VPC ID where the EC2 will be launched
   AmiId:
     Type: AWS::EC2::Image::Id
     Description: AMI ID for EC2 (custom or from AWS catalog)
@@ -20,7 +17,7 @@ Resources:
     Type: AWS::EC2::SecurityGroup
     Properties:
       GroupDescription: Security group for EC2 allowing ALB access
-      VpcId: !Ref VpcId
+      VpcId: !ImportValue VPCId
       SecurityGroupIngress:
         - IpProtocol: tcp
           FromPort: 80

@@ -2,15 +2,6 @@ AWSTemplateFormatVersion: '2010-09-09'
 Description: Public ALB with HTTPS and Route53 Alias Record
 
 Parameters:
-  VpcId:
-    Type: AWS::EC2::VPC::Id
-    Description: "VPC ID where ALB will be deployed"
-  Subnet1:
-    Type: AWS::EC2::Subnet::Id
-    Description: "Public Subnet 1"
-  Subnet2:
-    Type: AWS::EC2::Subnet::Id
-    Description: "Public Subnet 2"
   CertificateArn:
     Type: String
     Description: "ACM Certificate ARN for HTTPS"
@@ -26,7 +17,7 @@ Resources:
     Type: AWS::EC2::SecurityGroup
     Properties:
       GroupDescription: Security group for ALB
-      VpcId: !Ref VpcId
+      VpcId: !ImportValue VPCId
       SecurityGroupIngress:
         - IpProtocol: tcp
           FromPort: 80
@@ -44,15 +35,15 @@ Resources:
       Scheme: internet-facing
       Type: application
       Subnets:
-        - !Ref Subnet1
-        - !Ref Subnet2
+        - !ImportValue PrimarySubnetId
+        - !ImportValue SecondarySubnetId
       SecurityGroups:
         - !Ref ALBSecurityGroup
 
   TargetGroup:
     Type: AWS::ElasticLoadBalancingV2::TargetGroup
     Properties:
-      VpcId: !Ref VpcId
+      VpcId: !ImportValue VPCId
       Protocol: HTTP
       Port: 80
       TargetType: instance

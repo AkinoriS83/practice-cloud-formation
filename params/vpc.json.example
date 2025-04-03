@@ -1,0 +1,34 @@
+[
+    {
+      "ParameterKey": "VpcCidr",
+      "ParameterValue": "10.0.0.0/16"
+    },
+    {
+      "ParameterKey": "PrimarySubnetAZ",
+      "ParameterValue": "ap-northeast-1a"
+    },
+    {
+      "ParameterKey": "SecondarySubnetAZ",
+      "ParameterValue": "ap-northeast-1c"
+    },
+    {
+      "ParameterKey": "TertiarySubnetAZ",
+      "ParameterValue": "ap-northeast-1d"
+    },
+    {
+      "ParameterKey": "CreateTertiarySubnet",
+      "ParameterValue": "false"
+    },
+    {
+      "ParameterKey": "PrimarySubnetCidr",
+      "ParameterValue": "10.0.1.0/24"
+    },
+    {
+      "ParameterKey": "SecondarySubnetCidr",
+      "ParameterValue": "10.0.2.0/24"
+    },
+    {
+      "ParameterKey": "TertiarySubnetCidr",
+      "ParameterValue": "10.0.3.0/24"
+    }
+]

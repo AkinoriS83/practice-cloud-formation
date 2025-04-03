@@ -2,23 +2,9 @@ AWSTemplateFormatVersion: '2010-09-09'
 Description: Private Subnet with NAT Gateway, Elastic IP, and Route Table
 
 Parameters:
-  VpcId:
-    Type: AWS::EC2::VPC::Id
-    Description: ID of the VPC to launch the resources in
-  PublicSubnetId:
-    Type: AWS::EC2::Subnet::Id
-    Description: Public subnet where the NAT Gateway will be placed
   PrivateSubnetCidr:
     Type: String
-    Default: 10.0.2.0/24
     Description: CIDR block for the private subnet
-  AvailabilityZone:
-    Type: String
-    Default: ""
-    Description: Optional specify AZ manually (e.g., ap-northeast-1a)
-
-Conditions:
-  HasAZParam: !Not [!Equals [!Ref AvailabilityZone, ""]]
 
 Resources:
 
@@ -26,12 +12,9 @@ Resources:
   PrivateSubnet:
     Type: AWS::EC2::Subnet
     Properties:
-      VpcId: !Ref VpcId
+      VpcId: !ImportValue VPCId
       CidrBlock: !Ref PrivateSubnetCidr
-      AvailabilityZone: !If
-        - HasAZParam
-        - !Ref AvailabilityZone
-        - !Select [0, !GetAZs ""]  # default to first AZ 
+      AvailabilityZone: !ImportValue PrimaryAZ
       MapPublicIpOnLaunch: false  # This is a private subnet, no public IP assigned
       Tags:
         - Key: Name
@@ -48,7 +31,7 @@ Resources:
     Type: AWS::EC2::NatGateway
     Properties:
       AllocationId: !GetAtt NatEIP.AllocationId
-      SubnetId: !Ref PublicSubnetId  # NAT Gateway must be in a public subnet
+      SubnetId: !ImportValue PrimarySubnetId  # NAT Gateway must be in a public subnet
       Tags:
         - Key: Name
           Value: NAT-Gateway
@@ -57,7 +40,7 @@ Resources:
   PrivateRouteTable:
     Type: AWS::EC2::RouteTable
     Properties:
-      VpcId: !Ref VpcId
+      VpcId: !ImportValue VPCId
       Tags:
         - Key: Name
           Value: Private-RouteTable
