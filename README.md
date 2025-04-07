@@ -1,10 +1,13 @@
 # ☁️ AWS CloudFormation Practice Environment
 
-This repository contains modular AWS CloudFormation templates to build a basic infrastructure setup consisting of:
+This repository contains modular AWS CloudFormation templates to build a basic but extensible AWS infrastructure setup, including CI/CD deployment using CodeDeploy and CodePipeline.
+
+## 🏗️ Architecture Overview
 
 - 🔐 VPC + Private Subnet + NAT Gateway
 - 🌐 Application Load Balancer (ALB)
-- 🖥️ EC2 or Auto Scaling Group
+- 🖥️ EC2 instance or Auto Scaling Group
+- 🚀 CI/CD with CodeDeploy & CodePipeline
 - 🛠️ Makefile-based deployment automation
 
 ---
@@ -13,10 +16,14 @@ This repository contains modular AWS CloudFormation templates to build a basic i
 
 | File | Purpose |
 |------|---------|
-| `private_subnet.yaml` | Defines VPC, private subnet, NAT Gateway, and route table |
-| `alb.yaml` | Creates ALB and associated security group |
-| `ec2.yaml` | Launches EC2 instance and registers it to a target group |
-| `atuo_scaling.yaml` | (Optional) Defines Auto Scaling Group |
+| `template/vpc.yaml` | Creates a basic VPC |
+| `template/private_subnet.yaml` | Defines a private subnet, route table, NAT Gateway |
+| `template/alb.yaml` | Creates ALB and related security groups |
+| `template/ec2.yaml` | Launches EC2 instance and registers it to a target group |
+| `template/auto_scaling.yaml` | Defines Auto Scaling Group (optional) |
+| `template/code_deploy.yaml` | Sets up CodeDeploy application and deployment group |
+| `template/code_pipe_line.yaml` | Defines CodePipeline connected to GitHub |
+| `params/vpc.json.example` | Example parameter file for deploying VPC template |
 | `Makefile` | Automates deploy/delete operations for all stacks |
 
 ---
@@ -26,37 +33,37 @@ This repository contains modular AWS CloudFormation templates to build a basic i
 Make sure your AWS CLI is configured and run:
 
 ```bash
-# Deploy all stacks in order: network → alb → ec2
+# Deploy all stacks in order: vpc → subnet → alb → auto_scaling...
 make all
 
-# Delete all stacks safely, in reverse order (includes wait for deletion)
+# Clean up all stacks safely in reverse order
 make clean
 ```
 
----
-
-## 🔧 Parameter Configuration
-
-Each template uses parameters like `VpcId`, `PrivateSubnetId`, `AlbSecurityGroupId`, `AmiId`, etc.
-
-These are resolved via CloudFormation `Export`/`ImportValue`, so make sure the dependencies are created first (via Makefile or manually).
-
-To deploy `ec2.yaml` standalone, pass parameters like this:
+To deploy a specific stack manually:
 
 ```bash
 aws cloudformation deploy \
-  --template-file ec2.yaml \
+  --template-file template/ec2.yaml \
   --stack-name my-ec2-stack \
   --parameter-overrides AmiId=ami-xxxxxxxxxxxxxxxxx
 ```
 
 ---
 
+## 🔧 Parameter Configuration
+
+Each template uses parameters like `VpcId`, `PrivateSubnetId`, `TargetGroupArn`, etc.
+
+These parameters are often resolved via CloudFormation `Export`/`ImportValue`. You can override them using parameter files (see `params/*.json.example`) or CLI flags.
+
+---
+
 ## 🧠 Tips
 
-- Availability Zone (AZ) for private subnet can be optionally specified. If omitted, the first AZ will be selected automatically.
-- `delete-stack` is non-blocking, so `wait stack-delete-complete` is used in Makefile to avoid dependency errors.
-- `Makefile` defines proper stack dependencies to ensure correct deploy/delete order.
+- Makefile includes proper stack dependencies to ensure correct deployment and deletion order.
+- `delete-stack` is non-blocking; `wait` is included in Makefile to handle this.
+- CodePipeline requires GitHub token configuration (see `code_pipe_line.yaml`).
 
 ---
 
@@ -64,8 +71,9 @@ aws cloudformation deploy \
 
 - [AWS CloudFormation](https://docs.aws.amazon.com/cloudformation/)
 - [ALB User Guide](https://docs.aws.amazon.com/elasticloadbalancing/latest/application/introduction.html)
-- [Auto Scaling Group Docs](https://docs.aws.amazon.com/autoscaling/ec2/userguide/AutoScalingGroup.html)
+- [CodeDeploy Docs](https://docs.aws.amazon.com/codedeploy/latest/userguide/welcome.html)
+- [CodePipeline Docs](https://docs.aws.amazon.com/codepipeline/latest/userguide/welcome.html)
 
 ---
 
-> This repository is intended for **learning and practice only**, not for production.
+> ⚠️ This repository is intended for **learning and practice only**, not for production use.
