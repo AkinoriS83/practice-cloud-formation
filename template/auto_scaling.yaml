@@ -1,10 +1,11 @@
 AWSTemplateFormatVersion: '2010-09-09'
-Description: EC2 Auto Scaling Group in private subnet with ALB-accessible security group
+Description: EC2 Auto Scaling Group in private subnets with ALB-accessible security group
 
 Parameters:
   AmiId:
     Type: AWS::EC2::Image::Id
     Description: AMI ID for EC2 (custom or from AWS catalog)
+
   InstanceType:
     Type: String
     Default: t3.micro
@@ -12,7 +13,6 @@ Parameters:
 
 Resources:
 
-  # EC2 Security Group allowing HTTP access from ALB's SG
   EC2SecurityGroup:
     Type: AWS::EC2::SecurityGroup
     Properties:
@@ -27,7 +27,6 @@ Resources:
         - Key: Name
           Value: EC2-SG
 
-  # Launch Template for EC2 instances
   WebServerLaunchTemplate:
     Type: AWS::EC2::LaunchTemplate
     Properties:
@@ -36,7 +35,6 @@ Resources:
         InstanceType: !Ref InstanceType
         NetworkInterfaces:
           - DeviceIndex: 0
-            SubnetId: !ImportValue PrivateSubnetId
             AssociatePublicIpAddress: false
             Groups:
               - !Ref EC2SecurityGroup
@@ -46,18 +44,16 @@ Resources:
               - Key: Name
                 Value: WebServer
 
-  # Auto Scaling Group to manage EC2 instances
   WebServerASG:
     Type: AWS::AutoScaling::AutoScalingGroup
     Properties:
-      VPCZoneIdentifier:
-        - !ImportValue PrivateSubnetId
+      VPCZoneIdentifier: !Split [",", !ImportValue PrivateSubnetIds]
       LaunchTemplate:
         LaunchTemplateId: !Ref WebServerLaunchTemplate
         Version: !GetAtt WebServerLaunchTemplate.LatestVersionNumber
-      MinSize: '1'
-      MaxSize: '1'
-      DesiredCapacity: '1'
+      MinSize: '2'
+      MaxSize: '4'
+      DesiredCapacity: '2'
       TargetGroupARNs:
         - !ImportValue AlbTargetGroupArn
       Tags:

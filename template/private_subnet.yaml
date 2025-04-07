@@ -1,42 +1,44 @@
 AWSTemplateFormatVersion: '2010-09-09'
-Description: Private Subnet with NAT Gateway, Elastic IP, and Route Table
+Description: Three Private Subnets with NAT Gateway and Route Table
 
 Parameters:
-  PrivateSubnetCidr:
+  PrivatePrimarySubnetCidr:
     Type: String
-    Description: CIDR block for the private subnet
+    Description: CIDR block for the Primary Private Subnet
+
+  PrivateSecondarySubnetCidr:
+    Type: String
+    Description: CIDR block for the Secondary Private Subnet
+
+  PrivateTertiarySubnetCidr:
+    Type: String
+    Description: CIDR block for the Tertiary Private Subnet
+
+  CreatePrivateTertiarySubnet:
+    Type: String
+    AllowedValues: [true, false]
+    Default: false
+    Description: Whether to create a Tertiary Private Subnet
+
+Conditions:
+  CreatePrivateTertiary: !Equals [ !Ref CreatePrivateTertiarySubnet, "true" ]
 
 Resources:
 
-  # Private Subnet definition
-  PrivateSubnet:
-    Type: AWS::EC2::Subnet
-    Properties:
-      VpcId: !ImportValue VPCId
-      CidrBlock: !Ref PrivateSubnetCidr
-      AvailabilityZone: !ImportValue PrimaryAZ
-      MapPublicIpOnLaunch: false  # This is a private subnet, no public IP assigned
-      Tags:
-        - Key: Name
-          Value: PrivateSubnet
-
-  # Elastic IP for the NAT Gateway
   NatEIP:
     Type: AWS::EC2::EIP
     Properties:
-      Domain: vpc  # Must be 'vpc' for use with NAT Gateway
+      Domain: vpc
 
-  # NAT Gateway for outbound internet access from private subnet
   NatGateway:
     Type: AWS::EC2::NatGateway
     Properties:
       AllocationId: !GetAtt NatEIP.AllocationId
-      SubnetId: !ImportValue PrimarySubnetId  # NAT Gateway must be in a public subnet
+      SubnetId: !ImportValue PrimarySubnetId
       Tags:
         - Key: Name
           Value: NAT-Gateway
 
-  # Route table for the private subnet
   PrivateRouteTable:
     Type: AWS::EC2::RouteTable
     Properties:
@@ -45,14 +47,6 @@ Resources:
         - Key: Name
           Value: Private-RouteTable
 
-  # Associate the private subnet with the route table
-  PrivateRouteTableAssociation:
-    Type: AWS::EC2::SubnetRouteTableAssociation
-    Properties:
-      SubnetId: !Ref PrivateSubnet
-      RouteTableId: !Ref PrivateRouteTable
-
-  # Add a route to the internet via the NAT Gateway
   PrivateDefaultRoute:
     Type: AWS::EC2::Route
     Properties:
@@ -60,8 +54,65 @@ Resources:
       DestinationCidrBlock: 0.0.0.0/0
       NatGatewayId: !Ref NatGateway
 
+  PrivatePrimarySubnet:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !ImportValue VPCId
+      AvailabilityZone: !ImportValue PrimaryAZ
+      CidrBlock: !Ref PrivatePrimarySubnetCidr
+      MapPublicIpOnLaunch: false
+      Tags:
+        - Key: Name
+          Value: Private-Primary
+
+  PrimaryAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref PrivatePrimarySubnet
+      RouteTableId: !Ref PrivateRouteTable
+
+  PrivateSecondarySubnet:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !ImportValue VPCId
+      AvailabilityZone: !ImportValue SecondaryAZ
+      CidrBlock: !Ref PrivateSecondarySubnetCidr
+      MapPublicIpOnLaunch: false
+      Tags:
+        - Key: Name
+          Value: Private-Secondary
+
+  SecondaryAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref PrivateSecondarySubnet
+      RouteTableId: !Ref PrivateRouteTable
+
+  PrivateTertiarySubnet:
+    Type: AWS::EC2::Subnet
+    Condition: CreatePrivateTertiary
+    Properties:
+      VpcId: !ImportValue VPCId
+      AvailabilityZone: !ImportValue TertiaryAZ
+      CidrBlock: !Ref PrivateTertiarySubnetCidr
+      MapPublicIpOnLaunch: false
+      Tags:
+        - Key: Name
+          Value: Private-Tertiary
+
+  TertiaryAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Condition: CreatePrivateTertiary
+    Properties:
+      SubnetId: !Ref PrivateTertiarySubnet
+      RouteTableId: !Ref PrivateRouteTable
+
 Outputs:
-  PrivateSubnetId:
-    Value: !Ref PrivateSubnet
+  PrivateSubnetIds:
+    Description: List of private subnet IDs
+    Value: !If
+      - CreatePrivateTertiary
+      - !Join [ ",", [ !Ref PrivatePrimarySubnet, !Ref PrivateSecondarySubnet, !Ref PrivateTertiarySubnet ] ]
+      - !Join [ ",", [ !Ref PrivatePrimarySubnet, !Ref PrivateSecondarySubnet ] ]
     Export:
-      Name: PrivateSubnetId
+      Name: PrivateSubnetIds
