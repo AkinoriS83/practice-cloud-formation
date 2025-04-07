@@ -1,5 +1,5 @@
 AWSTemplateFormatVersion: '2010-09-09'
-Description: Three Private Subnets with NAT Gateway and Route Table
+Description: Three Private Subnets with Redundant NAT Gateways and Route Tables
 
 Parameters:
   PrivatePrimarySubnetCidr:
@@ -25,35 +25,102 @@ Conditions:
 
 Resources:
 
-  NatEIP:
+  # Elastic IPs for NAT Gateways
+  NatEIPPrimary:
     Type: AWS::EC2::EIP
     Properties:
       Domain: vpc
 
-  NatGateway:
+  NatEIPSecondary:
+    Type: AWS::EC2::EIP
+    Properties:
+      Domain: vpc
+
+  NatEIPTertiary:
+    Condition: CreatePrivateTertiary
+    Type: AWS::EC2::EIP
+    Properties:
+      Domain: vpc
+
+  # NAT Gateways per AZ
+  NatGatewayPrimary:
     Type: AWS::EC2::NatGateway
     Properties:
-      AllocationId: !GetAtt NatEIP.AllocationId
+      AllocationId: !GetAtt NatEIPPrimary.AllocationId
       SubnetId: !ImportValue PrimarySubnetId
       Tags:
         - Key: Name
-          Value: NAT-Gateway
+          Value: NAT-Gateway-Primary
 
-  PrivateRouteTable:
+  NatGatewaySecondary:
+    Type: AWS::EC2::NatGateway
+    Properties:
+      AllocationId: !GetAtt NatEIPSecondary.AllocationId
+      SubnetId: !ImportValue SecondarySubnetId
+      Tags:
+        - Key: Name
+          Value: NAT-Gateway-Secondary
+
+  NatGatewayTertiary:
+    Condition: CreatePrivateTertiary
+    Type: AWS::EC2::NatGateway
+    Properties:
+      AllocationId: !GetAtt NatEIPTertiary.AllocationId
+      SubnetId: !ImportValue TertiarySubnetId
+      Tags:
+        - Key: Name
+          Value: NAT-Gateway-Tertiary
+
+  # Route Tables per AZ
+  PrivateRouteTablePrimary:
     Type: AWS::EC2::RouteTable
     Properties:
       VpcId: !ImportValue VPCId
       Tags:
         - Key: Name
-          Value: Private-RouteTable
+          Value: Private-RT-Primary
 
-  PrivateDefaultRoute:
+  PrivateRouteTableSecondary:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !ImportValue VPCId
+      Tags:
+        - Key: Name
+          Value: Private-RT-Secondary
+
+  PrivateRouteTableTertiary:
+    Condition: CreatePrivateTertiary
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !ImportValue VPCId
+      Tags:
+        - Key: Name
+          Value: Private-RT-Tertiary
+
+  # Default routes
+  PrivateRoutePrimary:
     Type: AWS::EC2::Route
     Properties:
-      RouteTableId: !Ref PrivateRouteTable
+      RouteTableId: !Ref PrivateRouteTablePrimary
       DestinationCidrBlock: 0.0.0.0/0
-      NatGatewayId: !Ref NatGateway
+      NatGatewayId: !Ref NatGatewayPrimary
 
+  PrivateRouteSecondary:
+    Type: AWS::EC2::Route
+    Properties:
+      RouteTableId: !Ref PrivateRouteTableSecondary
+      DestinationCidrBlock: 0.0.0.0/0
+      NatGatewayId: !Ref NatGatewaySecondary
+
+  PrivateRouteTertiary:
+    Condition: CreatePrivateTertiary
+    Type: AWS::EC2::Route
+    Properties:
+      RouteTableId: !Ref PrivateRouteTableTertiary
+      DestinationCidrBlock: 0.0.0.0/0
+      NatGatewayId: !Ref NatGatewayTertiary
+
+  # Private Subnets
   PrivatePrimarySubnet:
     Type: AWS::EC2::Subnet
     Properties:
@@ -64,12 +131,6 @@ Resources:
       Tags:
         - Key: Name
           Value: Private-Primary
-
-  PrimaryAssociation:
-    Type: AWS::EC2::SubnetRouteTableAssociation
-    Properties:
-      SubnetId: !Ref PrivatePrimarySubnet
-      RouteTableId: !Ref PrivateRouteTable
 
   PrivateSecondarySubnet:
     Type: AWS::EC2::Subnet
@@ -82,15 +143,9 @@ Resources:
         - Key: Name
           Value: Private-Secondary
 
-  SecondaryAssociation:
-    Type: AWS::EC2::SubnetRouteTableAssociation
-    Properties:
-      SubnetId: !Ref PrivateSecondarySubnet
-      RouteTableId: !Ref PrivateRouteTable
-
   PrivateTertiarySubnet:
-    Type: AWS::EC2::Subnet
     Condition: CreatePrivateTertiary
+    Type: AWS::EC2::Subnet
     Properties:
       VpcId: !ImportValue VPCId
       AvailabilityZone: !ImportValue TertiaryAZ
@@ -100,12 +155,25 @@ Resources:
         - Key: Name
           Value: Private-Tertiary
 
-  TertiaryAssociation:
+  # Subnet Route Table Associations
+  PrimaryAssociation:
     Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref PrivatePrimarySubnet
+      RouteTableId: !Ref PrivateRouteTablePrimary
+
+  SecondaryAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref PrivateSecondarySubnet
+      RouteTableId: !Ref PrivateRouteTableSecondary
+
+  TertiaryAssociation:
     Condition: CreatePrivateTertiary
+    Type: AWS::EC2::SubnetRouteTableAssociation
     Properties:
       SubnetId: !Ref PrivateTertiarySubnet
-      RouteTableId: !Ref PrivateRouteTable
+      RouteTableId: !Ref PrivateRouteTableTertiary
 
 Outputs:
   PrivateSubnetIds:

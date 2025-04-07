@@ -12,6 +12,26 @@ Parameters:
     Description: EC2 instance type
 
 Resources:
+  EC2InstanceRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: EC2InstanceRole
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: ec2.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore
+        - arn:aws:iam::aws:policy/service-role/AmazonEC2RoleforAWSCodeDeploy
+
+  EC2InstanceProfile:
+    Type: AWS::IAM::InstanceProfile
+    Properties:
+      Roles:
+        - !Ref EC2InstanceRole
 
   EC2SecurityGroup:
     Type: AWS::EC2::SecurityGroup
@@ -33,6 +53,8 @@ Resources:
       LaunchTemplateData:
         ImageId: !Ref AmiId
         InstanceType: !Ref InstanceType
+        IamInstanceProfile:
+          Arn: !GetAtt EC2InstanceProfile.Arn
         NetworkInterfaces:
           - DeviceIndex: 0
             AssociatePublicIpAddress: false
@@ -60,3 +82,10 @@ Resources:
         - Key: Name
           Value: WebServer
           PropagateAtLaunch: true
+
+Outputs:
+  AutoScalingGroupName:
+    Description: Name of the Auto Scaling Group
+    Value: !Ref WebServerASG
+    Export:
+      Name: AutoScalingGroupName

@@ -1,0 +1,39 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: CodeDeploy Application and Deployment Group with ALB support
+
+Resources:
+  CodeDeployServiceRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: CodeDeployServiceRole
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: codedeploy.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSCodeDeployRole
+
+  MyCodeDeployApplication:
+    Type: AWS::CodeDeploy::Application
+    Properties:
+      ComputePlatform: Server
+      ApplicationName: WebServerApp
+
+  MyDeploymentGroup:
+    Type: AWS::CodeDeploy::DeploymentGroup
+    Properties:
+      ApplicationName: !Ref MyCodeDeployApplication
+      DeploymentGroupName: WebServerDeploymentGroup
+      ServiceRoleArn: !GetAtt CodeDeployServiceRole.Arn
+      DeploymentConfigName: CodeDeployDefault.HalfAtATime
+      DeploymentStyle:
+        DeploymentType: IN_PLACE
+        DeploymentOption: WITH_TRAFFIC_CONTROL
+      AutoScalingGroups:
+        - !ImportValue AutoScalingGroupName
+      LoadBalancerInfo:
+        TargetGroupInfoList:
+          - Name: !ImportValue AlbTargetGroupName

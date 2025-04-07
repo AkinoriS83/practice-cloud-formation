@@ -2,15 +2,23 @@ STACK_VPC = my-vpc-stack
 STACK_PRIVATE_SUBNET = my-private-subnet-stack
 STACK_ALB = my-alb-stack
 STACK_AUTO_SCALING = my-auto-scaling-stack
+STACK_CODE_DEPLOY = my-code-deploy-stack
 
 .PHONY: all vpc network alb auto_scaling clean
 
-all: auto_scaling
+all: code_deploy
+
+code_deploy: auto_scaling
+	aws cloudformation deploy \
+		--template-file template/code_deploy.yaml \
+		--stack-name $(STACK_CODE_DEPLOY) \
+		--capabilities CAPABILITY_NAMED_IAM
 
 auto_scaling: private_subnet alb
 	aws cloudformation deploy \
-		--template-file template/atuo_scaling.yaml \
+		--template-file template/auto_scaling.yaml \
 		--stack-name $(STACK_AUTO_SCALING) \
+		--capabilities CAPABILITY_NAMED_IAM \
 		--parameter-overrides \
 			file://params/auto_scaling.json
 

@@ -52,6 +52,10 @@ Resources:
       HealthCheckPath: /
       Matcher:
         HttpCode: 200
+      HealthyThresholdCount: 3
+      TargetGroupAttributes:
+        - Key: deregistration_delay.timeout_seconds
+          Value: '120'
 
   ALBListenerHTTPS:
     Type: AWS::ElasticLoadBalancingV2::Listener
@@ -97,3 +101,7 @@ Outputs:
     Value: !Ref TargetGroup
     Export:
       Name: AlbTargetGroupArn
+  AlbTargetGroupName:
+    Value: !GetAtt TargetGroup.TargetGroupName
+    Export:
+      Name: AlbTargetGroupName
