@@ -3,10 +3,19 @@ STACK_PRIVATE_SUBNET = my-private-subnet-stack
 STACK_ALB = my-alb-stack
 STACK_AUTO_SCALING = my-auto-scaling-stack
 STACK_CODE_DEPLOY = my-code-deploy-stack
+STACK_CODE_PIPE_LINE = my-code-pipe-line-stack
 
-.PHONY: all vpc network alb auto_scaling clean
+.PHONY: all vpc network alb auto_scaling code_deploy code_pipe_line clean
 
-all: code_deploy
+all: code_pipe_line
+
+code_pipe_line: code_deploy
+	aws cloudformation deploy \
+		--template-file template/code_pipe_line.yaml \
+		--stack-name $(STACK_CODE_PIPE_LINE) \
+		--capabilities CAPABILITY_NAMED_IAM \
+		--parameter-overrides \
+			file://params/code_pipe_line.json
 
 code_deploy: auto_scaling
 	aws cloudformation deploy \
@@ -45,6 +54,10 @@ vpc:
 
 
 clean:
+	aws cloudformation delete-stack --stack-name $(STACK_CODE_PIPE_LINE)
+	aws cloudformation wait stack-delete-complete --stack-name $(STACK_CODE_PIPE_LINE)
+	aws cloudformation delete-stack --stack-name $(STACK_CODE_DEPLOY)
+	aws cloudformation wait stack-delete-complete --stack-name $(STACK_CODE_DEPLOY)
 	aws cloudformation delete-stack --stack-name $(STACK_AUTO_SCALING)
 	aws cloudformation wait stack-delete-complete --stack-name $(STACK_AUTO_SCALING)
 	aws cloudformation delete-stack --stack-name $(STACK_ALB)

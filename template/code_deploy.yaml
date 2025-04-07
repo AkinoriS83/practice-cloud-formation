@@ -37,3 +37,22 @@ Resources:
       LoadBalancerInfo:
         TargetGroupInfoList:
           - Name: !ImportValue AlbTargetGroupName
+
+Outputs:
+  CodeDeployApplicationName:
+    Description: CodeDeploy Application Name
+    Value: !Ref MyCodeDeployApplication
+    Export:
+      Name: CodeDeployApplicationName
+
+  CodeDeployDeploymentGroupName:
+    Description: CodeDeploy Deployment Group Name
+    Value: !Ref MyDeploymentGroup
+    Export:
+      Name: CodeDeployDeploymentGroupName
+
+  CodeDeployServiceRoleArn:
+    Description: CodeDeploy IAM Role ARN
+    Value: !GetAtt CodeDeployServiceRole.Arn
+    Export:
+      Name: CodeDeployServiceRoleArn
