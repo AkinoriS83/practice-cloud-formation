@@ -18,6 +18,7 @@ This repository contains modular AWS CloudFormation templates to build a basic b
 |------|---------|
 | `template/vpc.yaml` | Creates a basic VPC |
 | `template/private_subnet.yaml` | Defines a private subnet, route table, NAT Gateway |
+| `template/private_subnet_multi_nat.yaml` | A template with redundant NAT Gateway from private_subnet.yaml. |
 | `template/alb.yaml` | Creates ALB and related security groups |
 | `template/ec2.yaml` | Launches EC2 instance and registers it to a target group |
 | `template/auto_scaling.yaml` | Defines Auto Scaling Group (optional) |
